@@ -1,10 +1,9 @@
 const fps = 30; // frames per second
-const FRICTION = 0.7; // friction coefficient of space (0 = no friction, 1 = lots of friction)
-const asteroid_JAG = 0.4; // jaggedness of the asteasteroids (0 = none, 1 = lots)
+const asteroid_more_edges = 0.4; // jaggedness of the asteasteroids (0 = none, 1 = lots)
 const asteroid_NUM = 3; // starting number of asteasteroids
 const asteroid_SIZE = 100; // starting size of asteasteroids in pixels
 const asteroid_SPD = 50; // max starting speed of asteasteroids in pixels per second
-const asteroid_VERT = 10; // average number of vertices on each asteasteroid
+const asteroid_edges = 10; // average number of edgesices on each asteasteroid
 const SHIP_SIZE = 30; // ship height in pixels
 const SHIP_move = 5; // acceleration of the ship in pixels per second per second
 const SHIP_TURN_SPD = 360; // turn speed in degrees per second
@@ -19,7 +18,7 @@ let ship = {
     x: canvas.width / 2,
     y: canvas.height / 2,
     r: SHIP_SIZE / 2,
-    a: 90 / 180 * Math.PI, // convert to radians
+    angle: 90 / 180 * Math.PI, // conedges to radians
     rotation: 0,
     moving: false,
     move: {
@@ -30,14 +29,14 @@ let ship = {
 
 // set up asteasteroids
 let asteroids = [];
-createAsteasteroidBelt();
+generateAsteroidArray();
 
 // set up event handlers
 document.addEventListener("keydown", keyDown);
 document.addEventListener("keyup", keyUp);
 
 // set up the game loop
-setInterval(update, 1000 / fps);
+setInterval(gameLogic, 1000 / fps);
 
 function make_base() {
     let base_image = new Image();
@@ -45,20 +44,20 @@ function make_base() {
     context.drawImage(base_image, 0, 0, window.innerWidth, window.innerHeight);
 }
 
-function createAsteasteroidBelt() {
+function generateAsteroidArray() {
     asteroids = [];
     let x, y;
     for (let i = 0; i < asteroid_NUM; i++) {
-        // random asteasteroid location (not touching spaceship)
+        // random asteroid location (not touching spaceship)
         do {
             x = Math.floor(Math.random() * canvas.width);
             y = Math.floor(Math.random() * canvas.height);
-        } while (distBetweenPoints(ship.x, ship.y, x, y) < asteroid_SIZE * 2 + ship.r);
+        } while (distBetweenShipAsteroids(ship.x, ship.y, x, y) < asteroid_SIZE * 2 + ship.r);
         asteroids.push(newAsteasteroid(x, y));
     }
 }
 
-function distBetweenPoints(x1, y1, x2, y2) {
+function distBetweenShipAsteroids(x1, y1, x2, y2) {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 }
 
@@ -93,103 +92,101 @@ function keyUp(event) {
 function newAsteasteroid(x, y) {
     let asteroid = {
         a: Math.random() * Math.PI * 2, // in radians
-        offs: [],
+        additional_edges: [],
         r: asteroid_SIZE / 2,
-        vert: Math.floor(Math.random() * (asteroid_VERT + 1) + asteroid_VERT / 2),
+        edges: Math.floor(Math.random() * (asteroid_edges + 1) + asteroid_edges / 2),
         x: x,
         y: y,
         xv: Math.random() * asteroid_SPD / fps * (Math.random() < 0.5 ? 1 : -1),
         yv: Math.random() * asteroid_SPD / fps * (Math.random() < 0.5 ? 1 : -1)
     };
 
-    // populate the offsets array
-    for (let i = 0; i < asteroid.vert; i++) {
-        asteroid.offs.push(Math.random() * asteroid_JAG * 2 + 1 - asteroid_JAG);
+    // populate the additional_edgesets array
+    for (let i = 0; i < asteroid.edges; i++) {
+        asteroid.additional_edges.push(Math.random() * asteroid_more_edges * 2 + 1 - asteroid_more_edges);
     }
 
     return asteroid;
 }
 
-function update() {
+function gameLogic() {
     // draw space
     make_base();
 
     // move the ship
     if (ship.moving) {
-        ship.move.x += SHIP_move * Math.cos(ship.a) / fps;
-        ship.move.y -= SHIP_move * Math.sin(ship.a) / fps;
+        ship.move.x += SHIP_move * Math.cos(ship.angle) / fps;
+        ship.move.y -= SHIP_move * Math.sin(ship.angle) / fps;
 
-        // draw the moveer
+        // draw reaction jet
         context.fillStyle = "red";
         context.strokeStyle = "yellow";
         context.lineWidth = SHIP_SIZE / 10;
         context.beginPath();
         context.moveTo( // rear left
-            ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)),
-            ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
+            ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) + 0.5 * Math.sin(ship.angle)),
+            ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) - 0.5 * Math.cos(ship.angle))
         );
         context.lineTo( // rear centre (behind the ship)
-            ship.x - ship.r * 5 / 3 * Math.cos(ship.a),
-            ship.y + ship.r * 5 / 3 * Math.sin(ship.a)
+            ship.x - ship.r * 5 / 3 * Math.cos(ship.angle),
+            ship.y + ship.r * 5 / 3 * Math.sin(ship.angle)
         );
         context.lineTo( // rear right
-            ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5 * Math.sin(ship.a)),
-            ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5 * Math.cos(ship.a))
+            ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) - 0.5 * Math.sin(ship.angle)),
+            ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) + 0.5 * Math.cos(ship.angle))
         );
         context.closePath();
         context.fill();
         context.stroke();
-    } else {
-        // apply friction (slow the ship down when not moving)
-        ship.move.x -= FRICTION * ship.move.x / fps;
-        ship.move.y -= FRICTION * ship.move.y / fps;
     }
 
     // draw the triangular ship
-    context.strokeStyle = "white";
+    context.fillStyle = "dodgerblue";
+    context.strokeStyle = "dodgerblue";
     context.lineWidth = SHIP_SIZE / 20;
     context.beginPath();
     context.moveTo( // nose of the ship
-        ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
-        ship.y - 4 / 3 * ship.r * Math.sin(ship.a)
+        ship.x + 4 / 3 * ship.r * Math.cos(ship.angle),
+        ship.y - 4 / 3 * ship.r * Math.sin(ship.angle)
     );
     context.lineTo( // rear left
-        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + Math.sin(ship.a)),
-        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - Math.cos(ship.a))
+        ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) + Math.sin(ship.angle)),
+        ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) - Math.cos(ship.angle))
     );
     context.lineTo( // rear right
-        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - Math.sin(ship.a)),
-        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + Math.cos(ship.a))
+        ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) - Math.sin(ship.angle)),
+        ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) + Math.cos(ship.angle))
     );
     context.closePath();
+    context.fill();
     context.stroke();
 
     // draw the asteroids
     context.strokeStyle = "slategrey";
     context.lineWidth = SHIP_SIZE / 20;
-    let a, r, x, y, offs, vert;
+    let a, r, x, y, additional_edges, edges;
     for (let i = 0; i < asteroids.length; i++) {
 
-        // get the asteasteroid properties
+        // get the asteroid properties
         a = asteroids[i].a;
         r = asteroids[i].r;
         x = asteroids[i].x;
         y = asteroids[i].y;
-        offs = asteroids[i].offs;
-        vert = asteroids[i].vert;
+        additional_edges = asteroids[i].additional_edges;
+        edges = asteroids[i].edges;
 
         // draw the path
         context.beginPath();
         context.moveTo(
-            x + r * offs[0] * Math.cos(a),
-            y + r * offs[0] * Math.sin(a)
+            x + r * additional_edges[0] * Math.cos(a),
+            y + r * additional_edges[0] * Math.sin(a)
         );
 
         // draw the polygon
-        for (let j = 1; j < vert; j++) {
+        for (let j = 1; j < edges; j++) {
             context.lineTo(
-                x + r * offs[j] * Math.cos(a + j * Math.PI * 2 / vert),
-                y + r * offs[j] * Math.sin(a + j * Math.PI * 2 / vert)
+                x + r * additional_edges[j] * Math.cos(a + j * Math.PI * 2 / edges),
+                y + r * additional_edges[j] * Math.sin(a + j * Math.PI * 2 / edges)
             );
         }
         context.closePath();
@@ -219,7 +216,7 @@ function update() {
     }
 
     // rotationate the ship
-    ship.a += ship.rotation;
+    ship.angle += ship.rotation;
 
     // move the ship
     ship.x += ship.move.x;
