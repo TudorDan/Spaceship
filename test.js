@@ -1,4 +1,5 @@
 const fps = 30; // frames per second
+const ship_explosion_duration = 0.3 // duration of the ship's explosion in seconds
 const asteroid_more_edges = 0.4; // jaggedness of the asteasteroids (0 = none, 1 = lots)
 const asteroid_NUM = 3; // starting number of asteasteroids
 const asteroid_SIZE = 100; // starting size of asteasteroids in pixels
@@ -7,6 +8,7 @@ const asteroid_edges = 10; // average number of edgesices on each asteasteroid
 const SHIP_SIZE = 30; // ship height in pixels
 const SHIP_move = 5; // acceleration of the ship in pixels per second per second
 const SHIP_TURN_SPD = 360; // turn speed in degrees per second
+const ship_collision = false; // show or hide collision
 const SHOW_CENTRE_DOT = false; // show or hide ship's centre dot
 
 /**Canvas */
@@ -24,7 +26,8 @@ let ship = {
     move: {
         x: 0,
         y: 0
-    }
+    },
+    explodeTime: 0
 }
 
 // set up asteasteroids
@@ -59,6 +62,10 @@ function generateAsteroidArray() {
 
 function distBetweenShipAsteroids(x1, y1, x2, y2) {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function explodeShip() {
+    ship.explodeTime = Math.ceil(ship_explosion_duration * fps);
 }
 
 function keyDown(event) {
@@ -101,7 +108,7 @@ function newAsteasteroid(x, y) {
         yv: Math.random() * asteroid_SPD / fps * (Math.random() < 0.5 ? 1 : -1)
     };
 
-    // populate the additional_edgesets array
+    // populate the additional_edges array
     for (let i = 0; i < asteroid.edges; i++) {
         asteroid.additional_edges.push(Math.random() * asteroid_more_edges * 2 + 1 - asteroid_more_edges);
     }
@@ -110,6 +117,8 @@ function newAsteasteroid(x, y) {
 }
 
 function gameLogic() {
+    let exploding = ship.explodeTime > 0;
+
     // draw space
     make_base();
 
@@ -141,31 +150,67 @@ function gameLogic() {
     }
 
     // draw the triangular ship
-    context.fillStyle = "dodgerblue";
-    context.strokeStyle = "dodgerblue";
-    context.lineWidth = SHIP_SIZE / 20;
-    context.beginPath();
-    context.moveTo( // nose of the ship
-        ship.x + 4 / 3 * ship.r * Math.cos(ship.angle),
-        ship.y - 4 / 3 * ship.r * Math.sin(ship.angle)
-    );
-    context.lineTo( // rear left
-        ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) + Math.sin(ship.angle)),
-        ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) - Math.cos(ship.angle))
-    );
-    context.lineTo( // rear right
-        ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) - Math.sin(ship.angle)),
-        ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) + Math.cos(ship.angle))
-    );
-    context.closePath();
-    context.fill();
-    context.stroke();
+    if (!exploding) {
+        context.fillStyle = "dodgerblue";
+        context.strokeStyle = "dodgerblue";
+        context.lineWidth = SHIP_SIZE / 20;
+        context.beginPath();
+        context.moveTo( // nose of the ship
+            ship.x + 4 / 3 * ship.r * Math.cos(ship.angle),
+            ship.y - 4 / 3 * ship.r * Math.sin(ship.angle)
+        );
+        context.lineTo( // rear left
+            ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) + Math.sin(ship.angle)),
+            ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) - Math.cos(ship.angle))
+        );
+        context.lineTo( // rear right
+            ship.x - ship.r * (2 / 3 * Math.cos(ship.angle) - Math.sin(ship.angle)),
+            ship.y + ship.r * (2 / 3 * Math.sin(ship.angle) + Math.cos(ship.angle))
+        );
+        context.closePath();
+        context.fill();
+        context.stroke();
+    } else {
+        // draw the explosion (concentric circles of different colours)
+        ctx.fillStyle = "darkred";
+        ctx.beginPath();
+        ctx.arc(ship.x, ship.y, ship.r * 1.7, 0, Math.PI * 2, false);
+        ctx.fill();
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(ship.x, ship.y, ship.r * 1.4, 0, Math.PI * 2, false);
+        ctx.fill();
+        ctx.fillStyle = "orange";
+        ctx.beginPath();
+        ctx.arc(ship.x, ship.y, ship.r * 1.1, 0, Math.PI * 2, false);
+        ctx.fill();
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(ship.x, ship.y, ship.r * 0.8, 0, Math.PI * 2, false);
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(ship.x, ship.y, ship.r * 0.5, 0, Math.PI * 2, false);
+        ctx.fill();
+    }
+
 
     // draw the asteroids
-    context.strokeStyle = "slategrey";
-    context.lineWidth = SHIP_SIZE / 20;
+
     let a, r, x, y, additional_edges, edges;
-    for (let i = 0; i < asteroids.length; i++) {
+    let colorArray = ['#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', '#E6B333', '#3366E6', '#999966', '#99FF99',
+        '#B34D4D', '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A', '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A',
+        '#33FFCC', '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC', '#66664D', '#991AFF', '#E666FF', '#4DB3FF',
+        '#1AB399', '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680', '#4D8066', '#809980', '#E6FF80', '#1AFF33',
+        '#999933', '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3', '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6',
+        '#6666FF'];
+    for (let i = 0, color = ''; i < asteroids.length; i++) {
+        context.strokeStyle = "slategrey";
+        context.lineWidth = SHIP_SIZE / 20;
+        // color asteroid
+        color = colorArray[Math.floor(Math.random() * colorArray.length)];
+        context.fillStyle = color;
+        context.fill();
 
         // get the asteroid properties
         a = asteroids[i].a;
@@ -192,21 +237,14 @@ function gameLogic() {
         context.closePath();
         context.stroke();
 
-        // move the asteroid
-        asteroids[i].x += asteroids[i].xv;
-        asteroids[i].y += asteroids[i].yv;
+        // // show asteroid's collision circle
+        // if (SHOW_BOUNDING) {
+        //     ctx.strokeStyle = "lime";
+        //     ctx.beginPath();
+        //     ctx.arc(x, y, r, 0, Math.PI * 2, false);
+        //     ctx.stroke();
+        // }
 
-        // handle asteroid edge of screen
-        if (asteroids[i].x < 0 - asteroids[i].r) {
-            asteroids[i].x = canvas.width + asteroids[i].r;
-        } else if (asteroids[i].x > canvas.width + asteroids[i].r) {
-            asteroids[i].x = 0 - asteroids[i].r
-        }
-        if (asteroids[i].y < 0 - asteroids[i].r) {
-            asteroids[i].y = canvas.height + asteroids[i].r;
-        } else if (asteroids[i].y > canvas.height + asteroids[i].r) {
-            asteroids[i].y = 0 - asteroids[i].r
-        }
     }
 
     // centre dot
@@ -215,7 +253,14 @@ function gameLogic() {
         context.fillRect(ship.x - 1, ship.y - 1, 2, 2);
     }
 
-    // rotationate the ship
+    // check for asteroid collisions (when not exploding)
+    for (let i = 0; i < asteroids.length; i++) {
+        if (distBetweenShipAsteroids(ship.x, ship.y, asteroids[i].x, asteroids[i].y) < ship.r + asteroids[i].r) {
+            explodeShip();
+        }
+    }
+
+    // rotate the ship
     ship.angle += ship.rotation;
 
     // move the ship
@@ -232,5 +277,23 @@ function gameLogic() {
         ship.y = canvas.height + ship.r;
     } else if (ship.y > canvas.height + ship.r) {
         ship.y = 0 - ship.r;
+    }
+
+    for (let i = 0; i < asteroids.length; i++) {
+        // move the asteroid
+        asteroids[i].x += asteroids[i].xv;
+        asteroids[i].y += asteroids[i].yv;
+
+        // handle asteroid edge of screen
+        if (asteroids[i].x < 0 - asteroids[i].r) {
+            asteroids[i].x = canvas.width + asteroids[i].r;
+        } else if (asteroids[i].x > canvas.width + asteroids[i].r) {
+            asteroids[i].x = 0 - asteroids[i].r
+        }
+        if (asteroids[i].y < 0 - asteroids[i].r) {
+            asteroids[i].y = canvas.height + asteroids[i].r;
+        } else if (asteroids[i].y > canvas.height + asteroids[i].r) {
+            asteroids[i].y = 0 - asteroids[i].r
+        }
     }
 }
