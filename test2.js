@@ -229,7 +229,7 @@ function shootLaser() {
     ship.canShoot = false;
 }
 
-function drawAsteroid(a, r, x, y, additional_edges, edges, color, i, colorArray) {
+function drawAsteroid(a, r, x, y, additional_edges, edges, color, i) {
     context.strokeStyle = "slategrey";
     context.lineWidth = SHIP_SIZE / 20;
 
@@ -288,7 +288,7 @@ function gameLogic() {
     //     '#6666FF'];
 
     for (let i = 0; i < asteroids.length; i++) {
-        drawAsteroid(a, r, x, y, additional_edges, edges, color, i, colorArray);
+        drawAsteroid(a, r, x, y, additional_edges, edges, color, i);
     }
 
     // thrust the ship
